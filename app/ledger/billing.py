@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from ..bidders.client import BidResponse
+from ..auction.models import BidResponse
 
 
 def clearing_price(bids: Iterable[BidResponse], winner: BidResponse | None) -> float:

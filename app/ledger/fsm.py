@@ -9,6 +9,7 @@ class LedgerState(str, Enum):
     CREATED = "created"
     AUCTION_COMPLETED = "auction_completed"
     EVENT_RECORDED = "event_recorded"
+    NO_BID = "no_bid"
 
 
 class LedgerEvent(str, Enum):

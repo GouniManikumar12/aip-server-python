@@ -4,3 +4,6 @@ bidders:
     endpoint: https://example-bidder.invalid/bid
     public_key: "-----BEGIN PUBLIC KEY-----..."
     timeout_ms: 120
+    pools:
+      - default
+      - retail

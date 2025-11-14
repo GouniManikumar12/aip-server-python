@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from ..bidders.client import BidResponse
+from ..auction.models import BidResponse
 from ..storage import LedgerStorage
 from .billing import clearing_price
 from .fsm import LedgerEvent, LedgerState, transition
@@ -25,6 +25,7 @@ class LedgerService:
             "bids": [],
             "winner": None,
             "events": [],
+            "no_bid": False,
         }
         return await self.storage.create_record(record)
 
@@ -55,6 +56,17 @@ class LedgerService:
         if payload:
             await self.storage.update_record(record_id, payload)
         return await self.storage.append_event(record_id, event_payload)
+
+    async def record_no_bid(self, record_id: str) -> dict[str, Any]:
+        return await self.storage.update_record(
+            record_id,
+            {
+                "state": LedgerState.NO_BID.value,
+                "no_bid": True,
+                "bids": [],
+                "winner": None,
+            },
+        )
 
     async def list_records(self) -> list[dict[str, Any]]:
         return await self.storage.list_records()

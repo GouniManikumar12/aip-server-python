@@ -10,11 +10,10 @@ from .admin import config as admin_config
 from .admin import health as admin_health
 from .admin import stats as admin_stats
 from .auction.runner import AuctionRunner
-from .bidders.client import BidderClient
 from .bidders.registry import BidderRegistry
 from .config import ServerConfig, get_bidder_config_path, get_server_config
 from .events.anti_replay import EventReplayGuard
-from .events.handler import EventService
+from .events.handler import BidResponseInbox, BidResponseService, EventService
 from .ledger.apply import LedgerService
 from .storage import LedgerStorage, build_storage
 from .transport.nonces import NonceCache
@@ -31,13 +30,26 @@ async def lifespan(app: FastAPI):
     storage = build_storage(server_config)
     ledger_service = LedgerService(storage)
     replay_guard = EventReplayGuard()
-    bidder_client = BidderClient(
-        max_skew_ms=server_config.transport.max_clock_skew_ms,
-        nonce_cache=nonce_cache,
+    distribution = server_config.auction.distribution
+    fanout = BidFanout(
+        backend=distribution.get("backend", "local"),
+        options=distribution,
     )
-    fanout = BidFanout(bidder_client)
-    auction_runner = AuctionRunner(bidder_registry, fanout, ledger_service)
+    bid_inbox = BidResponseInbox()
+    auction_runner = AuctionRunner(
+        bidder_registry,
+        fanout,
+        ledger_service,
+        bid_inbox,
+        server_config.auction.window_ms,
+    )
     event_service = EventService(ledger_service, replay_guard)
+    bid_response_service = BidResponseService(
+        bidder_registry,
+        bid_inbox,
+        nonce_cache,
+        server_config.transport.max_clock_skew_ms,
+    )
 
     app.state.server_config = server_config
     app.state.schema_registry = schema_registry
@@ -45,15 +57,13 @@ async def lifespan(app: FastAPI):
     app.state.nonce_cache = nonce_cache
     app.state.storage = storage
     app.state.ledger = ledger_service
-    app.state.bidder_client = bidder_client
     app.state.fanout = fanout
     app.state.auction_runner = auction_runner
     app.state.event_service = event_service
+    app.state.bid_inbox = bid_inbox
+    app.state.bid_response_service = bid_response_service
 
-    try:
-        yield
-    finally:
-        await bidder_client.close()
+    yield
 
 
 app = FastAPI(
@@ -99,6 +109,10 @@ def get_nonce_cache(request: Request) -> NonceCache:
     return request.app.state.nonce_cache
 
 
+def get_bid_response_service(request: Request) -> BidResponseService:
+    return request.app.state.bid_response_service
+
+
 # Routes ---------------------------------------------------------------------
 
 
@@ -109,6 +123,10 @@ async def root(settings: ServerConfig = Depends(get_server_settings)) -> dict[st
         "transport": {
             "nonce_ttl_seconds": settings.transport.nonce_ttl_seconds,
             "max_clock_skew_ms": settings.transport.max_clock_skew_ms,
+        },
+        "auction": {
+            "window_ms": settings.auction.window_ms,
+            "distribution_backend": settings.auction.distribution.get("backend", "local"),
         },
     }
 
@@ -125,6 +143,18 @@ async def run_auction(
         raise HTTPException(status_code=422, detail=str(exc.message)) from exc
     result = await runner.run(payload)
     return result
+
+
+@app.post("/aip/bid-response", tags=["auction"])
+async def submit_bid_response(
+    payload: dict[str, Any] = Body(...),
+    service: BidResponseService = Depends(get_bid_response_service),
+) -> dict[str, str]:
+    try:
+        await service.submit(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"status": "accepted"}
 
 
 @app.post("/events/{event_type}", tags=["events"])

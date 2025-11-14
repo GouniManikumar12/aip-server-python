@@ -15,6 +15,11 @@ class BidderConfig:
     endpoint: str
     public_key: str
     timeout_ms: int = 200
+    pools: tuple[str, ...] = ("default",)
+
+    def is_subscribed(self, pools: Iterable[str]) -> bool:
+        pool_set = set(pools)
+        return any(pool in pool_set for pool in self.pools)
 
 
 class BidderRegistry:
@@ -32,6 +37,7 @@ class BidderRegistry:
                 endpoint=item["endpoint"],
                 public_key=item.get("public_key", ""),
                 timeout_ms=int(item.get("timeout_ms", 200)),
+                pools=tuple(item.get("pools", ["default"])),
             )
             bidders[cfg.name] = cfg
         self._bidders = bidders
@@ -41,3 +47,6 @@ class BidderRegistry:
 
     def get(self, name: str) -> BidderConfig | None:
         return self._bidders.get(name)
+
+    def filter_by_pools(self, pools: Iterable[str]) -> list[BidderConfig]:
+        return [bidder for bidder in self._bidders.values() if bidder.is_subscribed(pools)]

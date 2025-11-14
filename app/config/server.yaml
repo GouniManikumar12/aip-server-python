@@ -12,3 +12,10 @@ ledger:
     # url: redis://localhost:6379/0
     # dsn: postgresql://user:pass@localhost:5432/aip
     # project_id: your-gcp-project
+auction:
+  window_ms: 50
+  distribution:
+    backend: local  # or "pubsub"
+    pubsub:
+      project_id: your-gcp-project
+      topic_prefix: aip-context

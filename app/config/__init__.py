@@ -27,10 +27,17 @@ class LedgerConfig:
 
 
 @dataclass(frozen=True)
+class AuctionConfig:
+    window_ms: int
+    distribution: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
 class ServerConfig:
     listen: Mapping[str, Any]
     transport: TransportConfig
     ledger: LedgerConfig
+    auction: AuctionConfig
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -46,6 +53,8 @@ def get_server_config() -> ServerConfig:
     transport = data.get("transport", {})
     ledger = data.get("ledger", {})
     options = dict(ledger.get("options") or {})
+    auction = data.get("auction", {})
+    distribution = dict(auction.get("distribution") or {})
     return ServerConfig(
         listen=data.get("listen", {}),
         transport=TransportConfig(
@@ -55,6 +64,10 @@ def get_server_config() -> ServerConfig:
         ledger=LedgerConfig(
             backend=str(ledger.get("backend", "in_memory")),
             options=options,
+        ),
+        auction=AuctionConfig(
+            window_ms=int(auction.get("window_ms", data.get("auction_window_ms", 50))),
+            distribution=distribution,
         ),
     )
 

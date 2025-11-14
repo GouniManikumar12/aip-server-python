@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -12,13 +11,7 @@ from ..transport.signatures import SignatureError, verify_signature
 from ..transport.timestamps import TimestampError, assert_within_skew
 from ..transport.nonces import NonceCache, NonceError
 from .registry import BidderConfig
-
-
-@dataclass
-class BidResponse:
-    bidder: str
-    payload: dict[str, Any]
-    price: float
+from ..auction.models import BidResponse
 
 
 class BidderClient:

@@ -9,3 +9,4 @@ cryptography>=42.0,<44.0
 redis>=5.0,<6.0
 asyncpg>=0.29,<0.30
 google-cloud-firestore>=2.15,<3.0
+google-cloud-pubsub>=2.21,<3.0
