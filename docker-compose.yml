@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  aip-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - AIP_CONFIG_PATH=/app/app/config/server.yaml
+    volumes:
+      - ./app:/app/app:ro

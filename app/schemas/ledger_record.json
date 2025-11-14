@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LedgerRecord",
+  "type": "object",
+  "properties": {
+    "record_id": {"type": "string"},
+    "state": {"type": "string"},
+    "payload": {"type": "object"}
+  },
+  "required": ["record_id", "state"],
+  "additionalProperties": true
+}

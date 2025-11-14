@@ -1,0 +1,60 @@
+"""Ledger service that persists context, bids, winners, and events."""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
+from ..bidders.client import BidResponse
+from ..storage import LedgerStorage
+from .billing import clearing_price
+from .fsm import LedgerEvent, LedgerState, transition
+
+
+@dataclass
+class LedgerService:
+    storage: LedgerStorage
+
+    async def create_record(self, context_request: dict[str, Any]) -> dict[str, Any]:
+        record_id = context_request.get("request_id") or str(uuid.uuid4())
+        record = {
+            "record_id": record_id,
+            "state": LedgerState.CREATED.value,
+            "context": context_request,
+            "bids": [],
+            "winner": None,
+            "events": [],
+        }
+        return await self.storage.create_record(record)
+
+    async def settle_auction(
+        self,
+        record_id: str,
+        bids: list[BidResponse],
+        winner: BidResponse | None,
+    ) -> dict[str, Any]:
+        record = await self.storage.get_record(record_id)
+        new_state = transition(LedgerState(record["state"]), LedgerEvent.AUCTION_SETTLED)
+        payload = {
+            "state": new_state.value,
+            "bids": [bid.payload for bid in bids],
+            "winner": winner.payload if winner else None,
+            "clearing_price": clearing_price(bids, winner),
+        }
+        return await self.storage.update_record(record_id, payload)
+
+    async def record_event(self, record_id: str, event_payload: dict[str, Any]) -> dict[str, Any]:
+        record = await self.storage.get_record(record_id)
+        payload: dict[str, Any] = {}
+        try:
+            new_state = transition(LedgerState(record["state"]), LedgerEvent.EVENT_INGESTED)
+            payload["state"] = new_state.value
+        except ValueError:
+            new_state = LedgerState(record["state"])
+        if payload:
+            await self.storage.update_record(record_id, payload)
+        return await self.storage.append_event(record_id, event_payload)
+
+    async def list_records(self) -> list[dict[str, Any]]:
+        return await self.storage.list_records()

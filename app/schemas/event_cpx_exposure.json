@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExposureEvent",
+  "type": "object",
+  "properties": {
+    "event_id": {"type": "string"},
+    "bid_id": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"}
+  },
+  "required": ["event_id", "bid_id", "timestamp"],
+  "additionalProperties": true
+}

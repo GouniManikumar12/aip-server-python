@@ -1,0 +1,6 @@
+# Example bidder registry entries; replace with real vendor-neutral integrations.
+bidders:
+  - name: sample-bidder
+    endpoint: https://example-bidder.invalid/bid
+    public_key: "-----BEGIN PUBLIC KEY-----..."
+    timeout_ms: 120

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bid",
+  "type": "object",
+  "properties": {
+    "bid_id": {"type": "string"},
+    "price": {"type": "number", "minimum": 0},
+    "payload": {"type": "object"}
+  },
+  "required": ["bid_id", "price"],
+  "additionalProperties": true
+}

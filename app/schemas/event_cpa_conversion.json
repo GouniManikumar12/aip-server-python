@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConversionEvent",
+  "type": "object",
+  "properties": {
+    "event_id": {"type": "string"},
+    "bid_id": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "value": {"type": "number", "minimum": 0}
+  },
+  "required": ["event_id", "bid_id", "timestamp"],
+  "additionalProperties": true
+}

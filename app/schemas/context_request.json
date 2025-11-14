@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContextRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "request_id": {"type": "string"},
+    "context": {"type": "object"}
+  },
+  "required": ["request_id", "context"]
+}

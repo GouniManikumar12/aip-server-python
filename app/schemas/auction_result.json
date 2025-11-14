@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuctionResult",
+  "type": "object",
+  "properties": {
+    "request_id": {"type": "string"},
+    "winning_bid": {"$ref": "./bid.json"},
+    "clearing_price": {"type": "number", "minimum": 0}
+  },
+  "required": ["request_id", "winning_bid"],
+  "additionalProperties": false
+}

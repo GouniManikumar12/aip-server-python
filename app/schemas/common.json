@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommonFields",
+  "type": "object",
+  "properties": {
+    "signature": {"type": "string"},
+    "nonce": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"}
+  },
+  "required": ["signature", "nonce", "timestamp"],
+  "additionalProperties": true
+}

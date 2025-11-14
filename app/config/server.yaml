@@ -1,0 +1,14 @@
+# Reference server configuration for FastAPI service.
+listen:
+  host: 0.0.0.0
+  port: 8080
+transport:
+  nonce_ttl_seconds: 60
+  max_clock_skew_ms: 500
+ledger:
+  backend: in_memory
+  options:
+    # Example connection options for redis/postgres/firestore backends
+    # url: redis://localhost:6379/0
+    # dsn: postgresql://user:pass@localhost:5432/aip
+    # project_id: your-gcp-project
