@@ -2,116 +2,128 @@
   "$id": "https://aip.org/schemas/event-cpx-exposure.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CPXExposureEvent",
-  "description": "Event fired when an ad is exposed/viewed by the user",
+  "description": "Event fired when the ad is actually exposed to the user.",
   "type": "object",
-  "required": ["event_type", "serve_token", "session_id", "platform_id", "agent_id", "wallet_id", "pricing", "ts"],
+
+  "required": [
+    "event_type",
+    "serve_token",
+    "session_id",
+    "platform_id",
+    "brand_agent_id",
+    "wallet_id",
+    "pricing",
+    "timestamp"
+  ],
   "properties": {
     "event_type": {
       "type": "string",
       "const": "cpx_exposure",
-      "description": "Event type identifier"
+      "description": "Exposure event type.",
+      "example": "cpx_exposure"
     },
+
     "serve_token": {
       "type": "string",
-      "description": "Serve token from the auction result",
+      "description": "Serve token provided in auction-result. Used to link exposure → click → conversion.",
       "example": "stk_abcxyz123"
     },
+
     "session_id": {
       "type": "string",
-      "description": "Session identifier",
-      "example": "s_001"
+      "description": "Session identifier passed from platform_request.",
+      "example": "sess_001"
     },
+
     "platform_id": {
       "type": "string",
-      "description": "Platform identifier",
-      "example": "pf_chatapp"
+      "description": "ID of the platform generating the event.",
+      "example": "pf_openai_chat"
     },
-    "agent_id": {
+
+    "brand_agent_id": {
       "type": "string",
-      "description": "Winning advertiser agent identifier",
-      "example": "ag_123"
+      "description": "Winning brand agent from the auction-result.",
+      "example": "ba_451"
     },
+
     "wallet_id": {
       "type": "string",
-      "description": "Wallet to charge for this exposure",
-      "example": "w_890"
+      "description": "Wallet that will be charged for this exposure.",
+      "example": "w_0021"
     },
     "pricing": {
       "type": "object",
-      "description": "Pricing information for this exposure",
-      "required": ["unit", "amount", "currency"],
+      "required": ["unit", "amount_cents"],
       "properties": {
         "unit": {
           "type": "string",
           "const": "CPX",
-          "description": "Pricing unit"
+          "description": "Billing unit for this event.",
+          "example": "CPX"
         },
-        "amount": {
-          "type": "string",
-          "description": "Charge amount in USD",
-          "pattern": "^\\d+\\.\\d{2,}$",
-          "example": "0.034"
-        },
-        "currency": {
-          "type": "string",
-          "const": "USD",
-          "description": "Currency code"
+        "amount_cents": {
+          "type": "integer",
+          "description": "Charge amount in CENTS. (bid = pay)",
+          "minimum": 0,
+          "example": 5
         }
       }
     },
     "exposure_metadata": {
       "type": "object",
-      "description": "Additional exposure context",
+      "description": "Optional additional rendering context.",
       "properties": {
-        "surface": {
+        "context_channel": {
           "type": "string",
-          "description": "UI surface where ad was shown",
-          "enum": ["chat", "voice", "page", "result_card"],
-          "example": "chat"
+          "enum": ["ai_chat", "voice_assistant", "agentic"],
+          "description": "Where the ad was displayed.",
+          "example": "ai_chat"
         },
         "position": {
           "type": "integer",
-          "description": "Position in the result list (1-indexed)",
           "minimum": 1,
+          "description": "Position in the LLM or assistant output (if relevant).",
           "example": 1
         },
         "visibility_ms": {
           "type": "integer",
-          "description": "Time ad was visible in milliseconds",
           "minimum": 0,
-          "example": 1500
+          "description": "How long the ad was visible (if measurable).",
+          "example": 1200
         }
       }
     },
-    "ts": {
+    "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of the exposure",
-      "example": "2025-11-11T18:00:00Z"
+      "description": "Timestamp when the exposure was detected.",
+      "example": "2025-11-14T18:00:00Z"
     },
+
     "ext": {
       "$ref": "./common.json#/definitions/extensionNamespace"
     }
   },
+
   "examples": [
     {
       "event_type": "cpx_exposure",
       "serve_token": "stk_abcxyz123",
-      "session_id": "s_001",
-      "platform_id": "pf_chatapp",
-      "agent_id": "ag_123",
-      "wallet_id": "w_890",
+      "session_id": "sess_001",
+      "platform_id": "pf_openai_chat",
+      "brand_agent_id": "ba_451",
+      "wallet_id": "w_0021",
       "pricing": {
         "unit": "CPX",
-        "amount": "0.034",
-        "currency": "USD"
+        "amount_cents": 5
       },
       "exposure_metadata": {
-        "surface": "chat",
+        "context_channel": "ai_chat",
         "position": 1,
-        "visibility_ms": 1500
+        "visibility_ms": 1200
       },
-      "ts": "2025-11-11T18:00:00Z"
+      "timestamp": "2025-11-14T18:00:00Z"
     }
   ]
 }
