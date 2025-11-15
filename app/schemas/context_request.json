@@ -1,11 +1,155 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ContextRequest",
+  "description": "AI platform request that starts an auction. Sent by platforms to initiate ad serving.",
   "type": "object",
-  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "session_id",
+    "platform_id",
+    "query_text",
+    "locale",
+    "geo",
+    "ts",
+    "auth"
+  ],
   "properties": {
-    "request_id": {"type": "string"},
-    "context": {"type": "object"}
+    "request_id": {
+      "type": "string",
+      "description": "Unique identifier for this context request",
+      "example": "rq_92f"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier for grouping related requests",
+      "example": "s_001"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Identifier of the AI platform making the request",
+      "example": "pf_chatapp"
+    },
+    "query_text": {
+      "type": "string",
+      "description": "User's query or prompt text",
+      "example": "best CRM for small teams"
+    },
+    "surface": {
+      "type": "string",
+      "description": "UI surface where the ad will be displayed",
+      "enum": [
+        "chat",
+        "voice",
+        "page",
+        "result_card"
+      ],
+      "example": "chat"
+    },
+    "locale": {
+      "type": "string",
+      "description": "User's locale in BCP 47 format",
+      "pattern": "^[a-z]{2}-[A-Z]{2}$",
+      "example": "en-US"
+    },
+    "geo": {
+      "type": "string",
+      "description": "User's country code (ISO 3166-1 alpha-2)",
+      "pattern": "^[A-Z]{2}$",
+      "example": "US"
+    },
+    "pricing": {
+      "type": "object",
+      "description": "Platform pricing constraints",
+      "properties": {
+        "cpx_floor": {
+          "type": "string",
+          "description": "Minimum CPX bid price in USD",
+          "pattern": "^\\d+\\.\\d{2,}$",
+          "example": "0.03"
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "description": "Contextual features for targeting",
+      "properties": {
+        "topic": {
+          "type": "array",
+          "description": "Detected topics or categories",
+          "items": {
+            "type": "string"
+          },
+          "example": [
+            "crm",
+            "smb"
+          ]
+        },
+        "user_type": {
+          "type": "string",
+          "description": "Type of user making the query",
+          "enum": [
+            "human",
+            "agent"
+          ],
+          "example": "human"
+        }
+      }
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the request",
+      "example": "2025-11-11T18:00:00Z"
+    },
+    "auth": {
+      "type": "object",
+      "description": "Authentication credentials",
+      "required": [
+        "nonce",
+        "sig"
+      ],
+      "properties": {
+        "nonce": {
+          "type": "string",
+          "description": "One-time nonce for replay protection",
+          "example": "n_123"
+        },
+        "sig": {
+          "type": "string",
+          "description": "HMAC signature of the request",
+          "example": "sig_abcd"
+        }
+      }
+    },
+    "ext": {
+      "$ref": "./common.json#/definitions/extensionNamespace"
+    }
   },
-  "required": ["request_id", "context"]
+  "examples": [
+    {
+      "request_id": "rq_92f",
+      "session_id": "s_001",
+      "platform_id": "pf_chatapp",
+      "query_text": "best CRM for small teams",
+      "surface": "chat",
+      "locale": "en-US",
+      "geo": "US",
+      "pricing": {
+        "cpx_floor": "0.03"
+      },
+      "features": {
+        "topic": [
+          "crm",
+          "smb"
+        ],
+        "user_type": "human"
+      },
+      "ts": "2025-11-11T18:00:00Z",
+      "auth": {
+        "nonce": "n_123",
+        "sig": "sig_abcd"
+      }
+    }
+  ],
+  "$id": "https://aip.org/schemas/context-request.json"
 }

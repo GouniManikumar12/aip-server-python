@@ -17,15 +17,25 @@ class LedgerService:
     storage: LedgerStorage
 
     async def create_record(self, context_request: dict[str, Any]) -> dict[str, Any]:
-        record_id = context_request.get("request_id") or str(uuid.uuid4())
+        auction_id = context_request.get("request_id") or str(uuid.uuid4())
+        token_hint = context_request.get("serve_token_hint")
+        serve_token = (
+            f"{token_hint}-{uuid.uuid4().hex[:8]}"
+            if token_hint
+            else f"stk_{uuid.uuid4().hex}"
+        )
         record = {
-            "record_id": record_id,
+            "record_id": serve_token,
+            "serve_token": serve_token,
+            "auction_id": auction_id,
             "state": LedgerState.CREATED.value,
             "context": context_request,
             "bids": [],
             "winner": None,
             "events": [],
             "no_bid": False,
+            "pools": [],
+            "eligible_bidders": [],
         }
         return await self.storage.create_record(record)
 
@@ -65,8 +75,15 @@ class LedgerService:
                 "no_bid": True,
                 "bids": [],
                 "winner": None,
+                "clearing_price": 0.0,
             },
         )
+
+    async def annotate_record(self, record_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        return await self.storage.update_record(record_id, updates)
+
+    async def get_record(self, record_id: str) -> dict[str, Any]:
+        return await self.storage.get_record(record_id)
 
     async def list_records(self) -> list[dict[str, Any]]:
         return await self.storage.list_records()

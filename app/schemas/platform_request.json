@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlatformRequest",
+  "description": "AI platform request sent to an AIP operator to initiate an ad auction.",
+  "type": "object",
+  "required": [
+    "request_id",
+    "session_id",
+    "platform_id",
+    "query_text",
+    "locale",
+    "geo",
+    "timestamp",
+    "auth"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "Unique identifier for this auction request",
+      "example": "req_92fA1"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Conversation or interaction session ID",
+      "example": "sess_001"
+    },
+    "platform_id": {
+      "type": "string",
+      "description": "Identifier of the AI platform sending this request",
+      "example": "openai_chat"
+    },
+    "model": {
+      "type": "string",
+      "description": "Identifier of the AI model used for this interaction (optional)",
+      "example": "gpt-4.3-mini"
+    },
+    "query_text": {
+      "type": "string",
+      "description": "User’s raw query text",
+      "example": "best CRM for small teams"
+    },
+    "messages": {
+      "type": "array",
+      "description": "Optional short conversation history (last N turns). Used for operator intent inference.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant", "system"],
+            "example": "user"
+          },
+          "content": {
+            "type": "string",
+            "example": "Looking for CRM recommendations"
+          }
+        }
+      },
+      "example": [
+        { "role": "user", "content": "best CRM tools?" },
+        { "role": "assistant", "content": "HubSpot, Zoho, Salesforce…" }
+      ]
+    },
+    "locale": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[A-Z]{2}$",
+      "description": "User locale in BCP 47 format",
+      "example": "en-US"
+    },
+    "geo": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "User country code (ISO 3166-1 alpha-2)",
+      "example": "US"
+    },
+    "platform_surface": {
+      "type": "string",
+      "description": "Optional platform-defined surface or view type",
+      "example": "ai_chat"
+    },
+    "cpx_floor": {
+      "type": "number",
+      "description": "Minimum CPX (USD) required by the platform for this auction request.",
+      "example": 0.05
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the platform generated this request",
+      "example": "2025-11-14T18:22:00Z"
+    },
+    "auth": {
+      "type": "object",
+      "required": ["nonce", "sig"],
+      "properties": {
+        "nonce": {
+          "type": "string",
+          "description": "One-time nonce for replay protection",
+          "example": "nonce_12345"
+        },
+        "sig": {
+          "type": "string",
+          "description": "HMAC signature of the request",
+          "example": "sig_d41d8cd98f00b204e9800998ecf8427e"
+        }
+      },
+      "example": {
+        "nonce": "nonce_12345",
+        "sig": "sig_d41d8cd98f00b204e9800998ecf8427e"
+      }
+    },
+    "ext": {
+      "$ref": "./common.json#/definitions/extensionNamespace",
+      "description": "Optional platform-defined or experimental fields. Must be vendor-namespaced."
+    }
+  },
+  "examples": [
+    {
+      "request_id": "req_92fA1",
+      "session_id": "sess_001",
+      "platform_id": "openai_chat",
+      "model": "gpt-4.3-mini",
+      "query_text": "best CRM for small teams",
+      "messages": [
+        { "role": "user", "content": "best CRM tools?" },
+        { "role": "assistant", "content": "HubSpot, Zoho, Salesforce…" }
+      ],
+      "locale": "en-US",
+      "geo": "US",
+      "platform_surface": "ai_chat",
+      "cpx_floor": 0.05,
+      "timestamp": "2025-11-14T18:22:00Z",
+      "auth": { "nonce": "nonce_12345", "sig": "sig_d41d8cd98f00b204e9800998ecf8427e" },
+      "ext": {
+        "openai": { "model": "gpt-4.3-mini", "conversation_mode": "assistant" }
+      }
+    }
+  ],
+  "$id": "https://aip.org/schemas/platform-request.json"
+}

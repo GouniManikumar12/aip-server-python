@@ -29,28 +29,53 @@ class AuctionRunner:
 
     async def run(self, context_request: dict[str, Any]) -> dict[str, Any]:
         record = await self._ledger.create_record(context_request)
+        serve_token = record["serve_token"]
+        auction_id = record["auction_id"]
         pools = self._classify_pools(context_request)
         eligible_bidders = self._registry.filter_by_pools(pools)
-        await self._inbox.register(record["record_id"], [bidder.name for bidder in eligible_bidders])
+        eligible_names = [bidder.name for bidder in eligible_bidders]
+        await self._ledger.annotate_record(
+            serve_token,
+            {
+                "pools": pools,
+                "eligible_bidders": eligible_names,
+            },
+        )
+        await self._inbox.register(serve_token, eligible_names)
         publish_payload = {
-            "auction_id": record["record_id"],
+            "auction_id": auction_id,
+            "serve_token": serve_token,
             "pools": pools,
             "context_request": context_request,
-            "bidders": [bidder.name for bidder in eligible_bidders],
+            "bidders": eligible_names,
         }
-        await self._fanout.publish(record["record_id"], pools, publish_payload)
-        bids = await self._inbox.collect(record["record_id"], self._window_ms)
+        await self._fanout.publish(auction_id, pools, publish_payload)
+        bids = await self._inbox.collect(serve_token, self._window_ms)
         if not bids:
-            return await self._ledger.record_no_bid(record["record_id"])
+            return await self._ledger.record_no_bid(serve_token)
         winner = select_winner(bids)
-        result = await self._ledger.settle_auction(record["record_id"], bids, winner)
+        result = await self._ledger.settle_auction(serve_token, bids, winner)
         return result
 
     def _classify_pools(self, context_request: dict[str, Any]) -> list[str]:
-        pools = context_request.get("category_pools") or context_request.get("categories")
-        if not pools:
-            context = context_request.get("context", {}) if isinstance(context_request.get("context"), dict) else {}
-            pools = context.get("categories")
+        candidates: list[Any] = [
+            context_request.get("category_pools"),
+            context_request.get("categories"),
+            context_request.get("pools"),
+        ]
+        context = context_request.get("context")
+        if isinstance(context, dict):
+            candidates.extend(
+                [
+                    context.get("category_pools"),
+                    context.get("categories"),
+                    context.get("pools"),
+                ]
+            )
+        features = context_request.get("features")
+        if isinstance(features, dict):
+            candidates.append(features.get("topic"))
+        pools: Any = next((value for value in candidates if value), None)
         if not pools:
             return ["default"]
         if isinstance(pools, str):
