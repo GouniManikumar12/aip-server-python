@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import re
 from typing import Any
+from uuid import uuid4
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status
 from jsonschema import ValidationError
@@ -153,13 +154,14 @@ async def run_auction(
     payload: dict[str, Any] = Body(...),
     runner: AuctionRunner = Depends(get_auction_runner),
     schemas: SchemaRegistry = Depends(get_schema_service),
+    settings: ServerConfig = Depends(get_server_settings),
 ) -> dict[str, Any]:
     try:
         schemas.validate("platform_request", payload)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc.message)) from exc
     try:
-        context_request = build_context_request(payload)
+        context_request = build_context_request(payload, settings)
         schemas.validate("context_request", context_request)
     except ValidationError as exc:
         raise HTTPException(
@@ -215,7 +217,7 @@ async def ingest_event(
 
 def format_auction_result(record: dict[str, Any]) -> dict[str, Any]:
     serve_token = record.get("serve_token") or record.get("record_id")
-    auction_id = record.get("auction_id") or record.get("context", {}).get("request_id")
+    auction_id = record.get("auction_id") or record.get("context", {}).get("context_id")
     ttl_source = (
         (record.get("winner") or {}).get("bid", {}).get("ttl_ms")
         or (record.get("winner") or {}).get("ttl_ms")
@@ -235,90 +237,177 @@ def format_auction_result(record: dict[str, Any]) -> dict[str, Any]:
         response["no_bid"] = True
         return response
     bid_payload = winner_payload.get("bid") or winner_payload
-    agent_id = bid_payload.get("agent_id") or winner_payload.get("bidder")
-    if not agent_id:
-        raise ValueError("winner payload missing agent_id")
-    preferred_unit = bid_payload.get("preferred_unit") or "CPX"
-    response["winner"] = {
-        "agent_id": agent_id,
-        "clearing_price_cpx": format_price(record.get("clearing_price", 0.0)),
+    brand_agent_id = (
+        bid_payload.get("brand_agent_id")
+        or winner_payload.get("brand_agent_id")
+        or winner_payload.get("bidder")
+    )
+    if not brand_agent_id:
+        raise ValueError("winner payload missing brand_agent_id")
+    pricing_vector = bid_payload.get("pricing") or {}
+    preferred_unit = determine_preferred_unit(bid_payload, pricing_vector)
+    reserved_amount = price_for_unit(preferred_unit, pricing_vector)
+    if reserved_amount is None:
+        raise ValueError("winner pricing missing reserved amount")
+    winner_block: dict[str, Any] = {
+        "brand_agent_id": brand_agent_id,
         "preferred_unit": preferred_unit,
+        "reserved_amount_cents": reserved_amount,
     }
-    # Vendor extensions remain inside their `ext.<vendor_id>` namespaces and pass through untouched.
-    creative = bid_payload.get("creative") or {}
+    offer = bid_payload.get("offer") or {}
+    creative_input = offer.get("creative_input") if isinstance(offer.get("creative_input"), dict) else {}
+    campaign_id = (
+        bid_payload.get("campaign_id")
+        or offer.get("campaign_id")
+        or creative_input.get("campaign_id")
+    )
+    product_id = (
+        bid_payload.get("product_id")
+        or offer.get("product_id")
+        or creative_input.get("product_id")
+    )
+    if campaign_id:
+        winner_block["campaign_id"] = campaign_id
+    if product_id:
+        winner_block["product_id"] = product_id
+    response["winner"] = winner_block
+    # Vendor extensions remain inside their namespaces and pass through untouched.
+    descriptions = creative_input.get("descriptions") or []
+    value_props = creative_input.get("value_props") or []
+    resource_urls = creative_input.get("resource_urls") or []
     render = {
-        "label": creative.get("label") or "[Ad]",
-        "title": creative.get("title"),
-        "body": creative.get("body"),
-        "cta": creative.get("cta"),
-        "url": creative.get("deeplink") or creative.get("url"),
+        "label": "[Ad]",
+        "title": creative_input.get("product_name") or creative_input.get("brand_name"),
+        "body": descriptions[0] if descriptions else None,
+        "cta": value_props[0] if value_props else None,
+        "url": resource_urls[0] if resource_urls else None,
     }
     response["render"] = {k: v for k, v in render.items() if v is not None}
     return response
 
 
-def format_price(value: Any) -> str:
+def determine_preferred_unit(bid_payload: dict[str, Any], pricing: dict[str, Any]) -> str:
+    unit = (bid_payload.get("preferred_unit") or "").upper()
+    if unit in {"CPX", "CPC", "CPA"} and price_for_unit(unit, pricing) is not None:
+        return unit
+    if pricing.get("cpa") is not None:
+        return "CPA"
+    if pricing.get("cpc") is not None:
+        return "CPC"
+    return "CPX"
+
+
+def price_for_unit(unit: str, pricing: dict[str, Any]) -> int | None:
+    key = unit.lower()
+    return format_price_cents(pricing.get(key))
+
+
+def format_price_cents(value: Any) -> int | None:
+    if value is None:
+        return None
+    value_str = str(value).strip()
+    if not value_str:
+        return None
     try:
-        numeric = float(value or 0)
-    except (TypeError, ValueError):
-        numeric = 0.0
-    return f"{numeric:.4f}"
+        if "." in value_str:
+            cents = (Decimal(value_str) * 100).quantize(Decimal("1"))
+        else:
+            cents = Decimal(value_str)
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    return int(cents)
 
 
-def build_context_request(platform_request: dict[str, Any]) -> dict[str, Any]:
-    """Map the external PlatformRequest schema to the internal ContextRequest schema used for bidder fanout."""
+def build_context_request(platform_request: dict[str, Any], settings: ServerConfig) -> dict[str, Any]:
+    """Map the external PlatformRequest schema to the ContextRequest schema used for bidder fanout."""
+    context_id = platform_request.get("request_id") or f"ctx_{uuid4().hex}"
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     context_request: dict[str, Any] = {
-        "request_id": platform_request["request_id"],
+        "context_id": context_id,
         "session_id": platform_request["session_id"],
+        "operator_id": settings.operator.operator_id,
         "platform_id": platform_request["platform_id"],
         "query_text": platform_request["query_text"],
         "locale": platform_request["locale"],
         "geo": platform_request["geo"],
-        "ts": platform_request["timestamp"],
+        "timestamp": timestamp,
+        "intent": build_intent(platform_request),
+        "allowed_formats": list(settings.operator.allowed_formats) or ["weave"],
         "auth": platform_request["auth"],
     }
-    surface = platform_request.get("platform_surface")
-    if surface:
-        context_request["surface"] = surface
-    if platform_request.get("cpx_floor") is not None:
-        context_request["pricing"] = {"cpx_floor": format_cpx_floor(platform_request["cpx_floor"])}
-    ext_payload = normalize_extensions(platform_request)
-    if ext_payload:
-        context_request["ext"] = ext_payload
+    verticals = extract_verticals(platform_request)
+    if verticals:
+        context_request["verticals"] = verticals
+    extensions = normalize_extensions(platform_request)
+    if extensions:
+        context_request["extensions"] = extensions
     return context_request
 
 
-def format_cpx_floor(value: Any) -> str:
+def extract_verticals(platform_request: dict[str, Any]) -> list[str]:
+    features = platform_request.get("features")
+    topics: list[str] = []
+    if isinstance(features, dict):
+        raw_topics = features.get("topic")
+        if isinstance(raw_topics, list):
+            topics = [topic for topic in raw_topics if isinstance(topic, str)]
+    return topics
+
+
+def build_intent(platform_request: dict[str, Any]) -> dict[str, Any]:
+    messages = platform_request.get("messages") or []
+    summary = summarize_context(platform_request)
+    return {
+        "type": infer_intent_type(platform_request),
+        "decision_phase": infer_decision_phase(platform_request, messages),
+        "context_summary": summary,
+        "turn_index": len(messages),
+    }
+
+
+def infer_intent_type(platform_request: dict[str, Any]) -> str:
     try:
-        quantized = Decimal(str(value)).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError, TypeError) as exc:
-        raise ValueError("cpx_floor must be numeric") from exc
-    normalized = format(quantized, "f")
-    if "." in normalized and len(normalized.split(".")[1]) < 2:
-        normalized = f"{normalized}0"
-    if "." not in normalized:
-        normalized = f"{normalized}.00"
-    return normalized
+        cpx_floor = float(platform_request.get("cpx_floor", 0))
+    except (TypeError, ValueError):
+        cpx_floor = 0.0
+    return "commercial" if cpx_floor > 0 else "informational"
+
+
+def infer_decision_phase(platform_request: dict[str, Any], messages: list[Any]) -> str:
+    length = len(messages)
+    if length >= 4:
+        return "decide"
+    if length == 3:
+        return "compare"
+    return "research"
+
+
+def summarize_context(platform_request: dict[str, Any]) -> str:
+    query = platform_request.get("query_text", "")
+    summary = f"User query: {query}".strip()
+    return summary[:280]
 
 
 def normalize_extensions(platform_request: dict[str, Any]) -> dict[str, Any]:
     """Preserve vendor-namespaced extensions and attach platform metadata for downstream bidders."""
     ext = platform_request.get("ext")
-    ext_payload = deepcopy(ext) if isinstance(ext, dict) else {}
+    extensions = deepcopy(ext) if isinstance(ext, dict) else {}
     vendor_id = slug_vendor_id(platform_request.get("platform_id", "platform"))
     platform_metadata: dict[str, Any] = {}
     for key in ("model", "messages", "platform_surface"):
         value = platform_request.get(key)
         if value:
             platform_metadata[key] = value
+    if platform_request.get("cpx_floor") is not None:
+        platform_metadata["cpx_floor"] = platform_request.get("cpx_floor")
     if platform_metadata:
-        bucket = ext_payload.get(vendor_id)
+        bucket = extensions.get(vendor_id)
         if not isinstance(bucket, dict):
             bucket = {}
-            ext_payload[vendor_id] = bucket
+            extensions[vendor_id] = bucket
         existing_meta = bucket.get("platform_request") if isinstance(bucket.get("platform_request"), dict) else {}
         bucket["platform_request"] = {**existing_meta, **platform_metadata}
-    return ext_payload
+    return extensions
 
 
 def slug_vendor_id(platform_id: str) -> str:

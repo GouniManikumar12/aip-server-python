@@ -1,24 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CPAConversionEvent",
-  "description": "Event fired when a user completes a conversion action (signup, purchase, etc.)",
+  "$id": "https://aip.org/schemas/event-cpa.json",
+  "title": "CPA Conversion Event",
+  "description": "Event fired when a user completes a conversion (signup, purchase, trial start, etc.).",
   "type": "object",
   "required": [
     "event_type",
     "serve_token",
     "conversion_id",
     "conversion_type",
-    "ts"
+    "wallet_id",
+    "brand_agent_id",
+    "pricing",
+    "timestamp"
   ],
   "properties": {
     "event_type": {
       "type": "string",
       "const": "cpa_conversion",
-      "description": "Event type identifier"
+      "description": "Event type (always cpa_conversion)"
     },
     "serve_token": {
       "type": "string",
-      "description": "Serve token from the auction result",
+      "description": "Token linking exposure → click → conversion",
       "example": "stk_abcxyz123"
     },
     "conversion_id": {
@@ -28,7 +32,6 @@
     },
     "conversion_type": {
       "type": "string",
-      "description": "Type of conversion action",
       "enum": [
         "signup",
         "purchase",
@@ -37,75 +40,69 @@
         "download",
         "custom"
       ],
-      "example": "signup"
+      "description": "Type of conversion action",
+      "example": "purchase"
+    },
+    "wallet_id": {
+      "type": "string",
+      "description": "Wallet to apply final CPA charge",
+      "example": "wal_ba451"
+    },
+    "brand_agent_id": {
+      "type": "string",
+      "description": "Brand agent associated with the conversion",
+      "example": "ba_451"
+    },
+    "pricing": {
+      "type": "object",
+      "description": "CPA pricing. This is the FINAL amount, replacing CPX/CPC.",
+      "required": ["unit", "amount_cents"],
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "CPA",
+          "description": "Billing unit"
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Final CPA charge in cents",
+          "example": 4900
+        }
+      }
     },
     "order_value_cents": {
       "type": "integer",
-      "description": "Order value in cents (for purchase conversions)",
       "minimum": 0,
-      "example": 4900
+      "description": "Optional order value for purchase conversions",
+      "example": 25000
     },
     "currency": {
       "type": "string",
-      "description": "Currency code for order value",
       "pattern": "^[A-Z]{3}$",
+      "description": "Order currency",
       "example": "USD"
     },
     "conversion_metadata": {
       "type": "object",
-      "description": "Additional conversion context",
+      "description": "Optional advertiser-side contextual data",
       "properties": {
-        "user_id": {
-          "type": "string",
-          "description": "Advertiser's internal user ID",
-          "example": "usr_12345"
-        },
-        "order_id": {
-          "type": "string",
-          "description": "Order or transaction ID",
-          "example": "ord_67890"
-        },
+        "user_id": { "type": "string" },
+        "order_id": { "type": "string" },
         "product_ids": {
           "type": "array",
-          "description": "List of product IDs purchased",
-          "items": {
-            "type": "string"
-          },
-          "example": [
-            "prod_crm_pro",
-            "prod_addon_analytics"
-          ]
+          "items": { "type": "string" }
         }
       }
     },
-    "ts": {
+    "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of the conversion",
-      "example": "2025-11-11T18:30:00Z"
+      "description": "When the conversion occurred",
+      "example": "2025-11-14T18:30:00Z"
     },
     "ext": {
       "$ref": "./common.json#/definitions/extensionNamespace"
     }
-  },
-  "examples": [
-    {
-      "event_type": "cpa_conversion",
-      "serve_token": "stk_abcxyz123",
-      "conversion_id": "cnv_001",
-      "conversion_type": "signup",
-      "order_value_cents": 4900,
-      "currency": "USD",
-      "conversion_metadata": {
-        "user_id": "usr_12345",
-        "order_id": "ord_67890",
-        "product_ids": [
-          "prod_crm_pro",
-          "prod_addon_analytics"
-        ]
-      },
-      "ts": "2025-11-11T18:30:00Z"
-    }
-  ],
-  "$id": "https://aip.org/schemas/event-cpa-conversion.json"
+  }
 }

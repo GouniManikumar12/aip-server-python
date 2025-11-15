@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aip.org/schemas/wallet-record.json",
+  "title": "WalletRecord",
+  "description": "Represents a participant’s wallet including available and reserved balances.",
+  "type": "object",
+  "required": [
+    "wallet_id",
+    "owner_type",
+    "currency",
+    "available_balance_cents",
+    "reserved_balance_cents",
+    "lifetime_spend_cents",
+    "updated_at"
+  ],
+  "properties": {
+    "wallet_id": {
+      "type": "string",
+      "description": "Unique wallet identifier",
+      "example": "wal_105"
+    },
+    "owner_type": {
+      "type": "string",
+      "enum": ["brand_agent", "operator", "platform"],
+      "description": "Entity that owns this wallet",
+      "example": "brand_agent"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO currency code",
+      "example": "USD"
+    },
+    "available_balance_cents": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Funds available for new auctions (in cents)",
+      "example": 250000
+    },
+    "reserved_balance_cents": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Funds reserved for pending auctions (in cents)",
+      "example": 5000
+    },
+    "lifetime_spend_cents": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total lifetime spend charged from this wallet (in cents)",
+      "example": 127500
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp",
+      "example": "2025-11-12T02:00:00Z"
+    },
+    "ext": {
+      "$ref": "./common.json#/definitions/extensionNamespace"
+    }
+  }
+}

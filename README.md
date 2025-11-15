@@ -153,12 +153,18 @@ Environment-specific guidance:
    # Health
    curl http://localhost:8080/health
 
-   # Submit a context request (expect no_bid when no bidders respond)
-   curl -X POST http://localhost:8080/context \
+   # Submit a platform request (expect no_bid when no bidders respond)
+   curl -X POST http://localhost:8080/aip/context \
      -H "Content-Type: application/json" \
      -d '{
            "request_id": "ctx_123",
-           "context": {"categories": ["default"], "query": "best crm"}
+           "session_id": "sess_001",
+           "platform_id": "openai_chat",
+           "query_text": "best CRM for small teams",
+           "locale": "en-US",
+           "geo": "US",
+           "timestamp": "2025-11-14T18:22:00Z",
+           "auth": {"nonce": "nonce_123", "sig": "sig_hmac"}
          }'
 
    # (During the auction window) send a mock bid response

@@ -62,6 +62,7 @@ class AuctionRunner:
             context_request.get("category_pools"),
             context_request.get("categories"),
             context_request.get("pools"),
+            context_request.get("verticals"),
         ]
         context = context_request.get("context")
         if isinstance(context, dict):

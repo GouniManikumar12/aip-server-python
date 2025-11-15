@@ -2,58 +2,93 @@
   "$id": "https://aip.org/schemas/event-cpc-click.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CPCClickEvent",
-  "description": "Event fired when a user clicks on an ad",
+  "description": "Event fired when the user clicks or engages with the ad. Triggers CPC billing unless upgraded to CPA.",
   "type": "object",
-  "required": ["event_type", "serve_token", "event_id", "ts"],
+  "required": [
+    "event_type",
+    "serve_token",
+    "session_id",
+    "platform_id",
+    "brand_agent_id",
+    "wallet_id",
+    "pricing",
+    "timestamp"
+  ],
   "properties": {
     "event_type": {
       "type": "string",
       "const": "cpc_click",
-      "description": "Event type identifier"
+      "description": "Click event type identifier.",
+      "example": "cpc_click"
     },
     "serve_token": {
       "type": "string",
-      "description": "Serve token from the auction result",
+      "description": "Serve token from auction-result. Used to stitch CPX → CPC → CPA chain.",
       "example": "stk_abcxyz123"
     },
-    "event_id": {
+    "session_id": {
       "type": "string",
-      "description": "Unique identifier for this click event",
-      "example": "ev_991"
+      "description": "Session identifier from platform_request.",
+      "example": "sess_001"
     },
-    "s2s": {
-      "type": "boolean",
-      "description": "Whether this is a server-to-server event (true) or client-side (false)",
-      "example": true
+    "platform_id": {
+      "type": "string",
+      "description": "Platform generating the click event.",
+      "example": "pf_openai_chat"
+    },
+    "brand_agent_id": {
+      "type": "string",
+      "description": "Winning brand agent who created the bid.",
+      "example": "ba_451"
+    },
+    "wallet_id": {
+      "type": "string",
+      "description": "Wallet to charge for this click.",
+      "example": "w_0021"
+    },
+    "pricing": {
+      "type": "object",
+      "required": ["unit", "amount_cents"],
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "CPC",
+          "description": "Billing unit for this event.",
+          "example": "CPC"
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Charge amount in cents as defined by the brand agent's bid.",
+          "example": 45
+        }
+      },
+      "additionalProperties": false
     },
     "click_metadata": {
       "type": "object",
-      "description": "Additional click context",
+      "description": "Optional details about the click.",
       "properties": {
-        "user_agent": {
+        "source": {
           "type": "string",
-          "description": "User agent string of the client",
-          "example": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+          "enum": ["deep_link", "button", "voice_confirmation", "agent_action"],
+          "description": "How the click/engagement occurred.",
+          "example": "deep_link"
         },
-        "ip_address": {
-          "type": "string",
-          "description": "IP address of the user (for fraud detection)",
-          "format": "ipv4",
-          "example": "192.168.1.1"
-        },
-        "referrer": {
-          "type": "string",
-          "description": "HTTP referrer URL",
-          "format": "uri",
-          "example": "https://chatapp.example/session/s_001"
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Position in result list (if relevant).",
+          "example": 1
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "ts": {
+    "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of the click",
-      "example": "2025-11-11T18:02:00Z"
+      "description": "ISO 8601 timestamp when the click occurred.",
+      "example": "2025-11-14T18:00:02Z"
     },
     "ext": {
       "$ref": "./common.json#/definitions/extensionNamespace"
@@ -63,14 +98,19 @@
     {
       "event_type": "cpc_click",
       "serve_token": "stk_abcxyz123",
-      "event_id": "ev_991",
-      "s2s": true,
-      "click_metadata": {
-        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-        "ip_address": "192.168.1.1",
-        "referrer": "https://chatapp.example/session/s_001"
+      "session_id": "sess_001",
+      "platform_id": "pf_openai_chat",
+      "brand_agent_id": "ba_451",
+      "wallet_id": "w_0021",
+      "pricing": {
+        "unit": "CPC",
+        "amount_cents": 45
       },
-      "ts": "2025-11-11T18:02:00Z"
+      "click_metadata": {
+        "source": "deep_link",
+        "position": 1
+      },
+      "timestamp": "2025-11-14T18:00:02Z"
     }
   ]
 }

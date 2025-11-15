@@ -39,22 +39,24 @@ class SchemaRegistry:
         if not isinstance(schema, dict):
             return
         properties = schema.get("properties")
-        if isinstance(properties, dict) and "ext" in properties:
-            ext_block = properties["ext"]
-            if isinstance(ext_block, dict) and "$ref" not in ext_block:
-                ext_block.setdefault("description", EXTENSION_DESCRIPTION)
-                ext_block.setdefault("type", "object")
-                ext_block.setdefault(
-                    "patternProperties",
-                    {
-                        EXTENSION_VENDOR_PATTERN: {
-                            "type": "object",
-                            "description": "Operator-owned extension payload.",
-                            "additionalProperties": True,
-                        }
-                    },
-                )
-                ext_block.setdefault("additionalProperties", False)
+        if isinstance(properties, dict):
+            for key in ("ext", "extensions"):
+                if key in properties:
+                    ext_block = properties[key]
+                    if isinstance(ext_block, dict) and "$ref" not in ext_block:
+                        ext_block.setdefault("description", EXTENSION_DESCRIPTION)
+                        ext_block.setdefault("type", "object")
+                        ext_block.setdefault(
+                            "patternProperties",
+                            {
+                                EXTENSION_VENDOR_PATTERN: {
+                                    "type": "object",
+                                    "description": "Operator-owned extension payload.",
+                                    "additionalProperties": True,
+                                }
+                            },
+                        )
+                        ext_block.setdefault("additionalProperties", False)
         for value in schema.values():
             if isinstance(value, dict):
                 self._inject_extension_namespace(value)

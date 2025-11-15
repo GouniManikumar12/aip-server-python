@@ -17,7 +17,7 @@ class LedgerService:
     storage: LedgerStorage
 
     async def create_record(self, context_request: dict[str, Any]) -> dict[str, Any]:
-        auction_id = context_request.get("request_id") or str(uuid.uuid4())
+        auction_id = context_request.get("context_id") or str(uuid.uuid4())
         token_hint = context_request.get("serve_token_hint")
         serve_token = (
             f"{token_hint}-{uuid.uuid4().hex[:8]}"

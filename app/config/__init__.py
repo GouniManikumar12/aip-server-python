@@ -33,11 +33,18 @@ class AuctionConfig:
 
 
 @dataclass(frozen=True)
+class OperatorConfig:
+    operator_id: str
+    allowed_formats: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ServerConfig:
     listen: Mapping[str, Any]
     transport: TransportConfig
     ledger: LedgerConfig
     auction: AuctionConfig
+    operator: OperatorConfig
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -55,6 +62,8 @@ def get_server_config() -> ServerConfig:
     options = dict(ledger.get("options") or {})
     auction = data.get("auction", {})
     distribution = dict(auction.get("distribution") or {})
+    operator = data.get("operator", {})
+    allowed_formats = tuple(operator.get("allowed_formats") or ("weave",))
     return ServerConfig(
         listen=data.get("listen", {}),
         transport=TransportConfig(
@@ -68,6 +77,10 @@ def get_server_config() -> ServerConfig:
         auction=AuctionConfig(
             window_ms=int(auction.get("window_ms", data.get("auction_window_ms", 50))),
             distribution=distribution,
+        ),
+        operator=OperatorConfig(
+            operator_id=str(operator.get("id", "operator")),
+            allowed_formats=allowed_formats,
         ),
     )
 

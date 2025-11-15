@@ -80,4 +80,4 @@ def _bidder_from_payload(payload: dict[str, Any]) -> str | None:
     bid = payload.get("bid") if isinstance(payload, dict) else None
     if isinstance(bid, dict):
         payload = bid
-    return payload.get("agent_id") or payload.get("bidder")
+    return payload.get("brand_agent_id") or payload.get("agent_id") or payload.get("bidder")

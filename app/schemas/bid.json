@@ -1,157 +1,192 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Bid",
-  "description": "Advertiser agent bid submitted in response to a context request",
+  "description": "Brand Agent bid submitted in response to a ContextRequest",
   "type": "object",
   "required": [
     "bid_id",
-    "agent_id",
+    "brand_agent_id",
     "context_id",
     "wallet_id",
-    "bid_vector",
-    "ts",
+    "pricing",
+    "offer",
+    "timestamp",
     "auth"
   ],
   "properties": {
     "bid_id": {
       "type": "string",
       "description": "Unique identifier for this bid",
-      "example": "b_7823"
+      "example": "bid_7823"
     },
-    "agent_id": {
+    "brand_agent_id": {
       "type": "string",
-      "description": "Identifier of the advertiser agent placing the bid",
-      "example": "ag_123"
+      "description": "Identifier of the brand agent placing the bid",
+      "example": "brand_agent_123"
     },
     "context_id": {
       "type": "string",
-      "description": "ID of the context request being bid on",
+      "description": "ID of the ContextRequest being bid on",
       "example": "ctx_92f"
     },
     "wallet_id": {
       "type": "string",
-      "description": "Wallet to charge if this bid wins",
-      "example": "w_890"
+      "description": "Wallet to debit if the bid wins",
+      "example": "wallet_890"
     },
-    "bid_vector": {
+    "pricing": {
       "type": "object",
-      "description": "Pricing for different charging models (CPX required, CPC/CPA optional)",
-      "required": [
-        "cpx"
-      ],
+      "description": "Pricing vector for different billing events (CPX required, CPC/CPA optional)",
+      "required": ["cpx"],
       "properties": {
         "cpx": {
           "type": "string",
-          "description": "Price per exposure in USD",
+          "description": "Price per exposure (USD)",
           "pattern": "^\\d+\\.\\d{2,}$",
           "example": "0.05"
         },
         "cpc": {
           "type": "string",
-          "description": "Price per click in USD",
+          "description": "Price per click (USD)",
           "pattern": "^\\d+\\.\\d{2,}$",
           "example": "0.45"
         },
         "cpa": {
           "type": "string",
-          "description": "Price per conversion in USD",
+          "description": "Price per conversion (USD)",
           "pattern": "^\\d+\\.\\d{2,}$",
           "example": "10.00"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (ISO 4217)",
+          "pattern": "^[A-Z]{3}$",
+          "default": "USD",
+          "example": "USD"
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "preferred_unit": {
-      "type": "string",
-      "description": "Preferred charging model for this bid",
-      "enum": [
-        "CPX",
-        "CPC",
-        "CPA"
-      ],
-      "example": "CPA"
-    },
-    "creative": {
+    "offer": {
       "type": "object",
-      "description": "Ad creative to display if bid wins",
+      "description": "Offer metadata that will be rendered to the user if the bid wins",
+      "required": ["creative_input"],
       "properties": {
-        "title": {
-          "type": "string",
-          "description": "Ad title (max 120 characters)",
-          "maxLength": 120,
-          "example": "Pipedrive CRM"
-        },
-        "body": {
-          "type": "string",
-          "description": "Ad body text (max 500 characters)",
-          "maxLength": 500,
-          "example": "CRM built for growing teams."
-        },
-        "cta": {
-          "type": "string",
-          "description": "Call-to-action text (max 60 characters)",
-          "maxLength": 60,
-          "example": "Start free trial"
-        },
-        "deeplink": {
-          "type": "string",
-          "description": "Destination URL",
-          "format": "uri",
-          "example": "https://pipedrive.com/signup"
+        "creative_input": {
+          "type": "object",
+          "required": [
+            "brand_name",
+            "product_name",
+            "descriptions",
+            "value_props",
+            "resource_urls",
+            "image_urls"
+          ],
+          "properties": {
+            "brand_name": {
+              "type": "string",
+              "description": "Brand or advertiser name",
+              "example": "Nimbus CRM"
+            },
+            "product_name": {
+              "type": "string",
+              "description": "Product or offer name",
+              "example": "Nimbus CRM Pro"
+            },
+            "descriptions": {
+              "type": "array",
+              "description": "Long-form descriptions or copy blocks",
+              "items": { "type": "string" },
+              "minItems": 1,
+              "example": [
+                "CRM built for growing teams, with AI-assisted workflows."
+              ]
+            },
+            "value_props": {
+              "type": "array",
+              "description": "Short value propositions or bullets",
+              "items": { "type": "string" },
+              "minItems": 1,
+              "example": [
+                "Automated pipeline insights",
+                "Collaborative forecasting"
+              ]
+            },
+            "resource_urls": {
+              "type": "array",
+              "description": "Destination or tracking URLs",
+              "items": { "type": "string", "format": "uri" },
+              "minItems": 1,
+              "example": ["https://nimbus.example/signup"]
+            },
+            "image_urls": {
+              "type": "array",
+              "description": "Creative image URLs",
+              "items": { "type": "string", "format": "uri" },
+              "minItems": 1,
+              "example": ["https://cdn.example.com/nimbus/crm.png"]
+            }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "ts": {
+    "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of the bid",
+      "description": "ISO 8601 timestamp when the bid was generated",
       "example": "2025-11-11T18:00:01Z"
     },
     "auth": {
       "type": "object",
-      "description": "Authentication credentials",
-      "required": [
-        "nonce",
-        "sig"
-      ],
+      "description": "Authentication envelope used for replay protection",
+      "required": ["nonce", "signature"],
       "properties": {
         "nonce": {
           "type": "string",
           "description": "One-time nonce for replay protection",
-          "example": "n_456"
+          "example": "nonce_456"
         },
-        "sig": {
+        "signature": {
           "type": "string",
-          "description": "HMAC signature of the bid",
+          "description": "Signature over the canonical bid payload",
           "example": "sig_789"
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "ext": {
-      "$ref": "./common.json#/definitions/extensionNamespace"
+    "extensions": {
+      "$ref": "./common.json#/definitions/extensionNamespace",
+      "description": "Optional vendor-namespaced extension data"
     }
   },
   "examples": [
     {
-      "bid_id": "b_7823",
-      "agent_id": "ag_123",
+      "bid_id": "bid_7823",
+      "brand_agent_id": "brand_agent_123",
       "context_id": "ctx_92f",
-      "wallet_id": "w_890",
-      "bid_vector": {
+      "wallet_id": "wallet_890",
+      "pricing": {
         "cpx": "0.05",
         "cpc": "0.45",
-        "cpa": "10.00"
+        "cpa": "10.00",
+        "currency": "USD"
       },
-      "preferred_unit": "CPA",
-      "creative": {
-        "title": "Pipedrive CRM",
-        "body": "CRM built for growing teams.",
-        "cta": "Start free trial",
-        "deeplink": "https://pipedrive.com/signup"
+      "offer": {
+        "creative_input": {
+          "brand_name": "Nimbus",
+          "product_name": "Nimbus CRM Pro",
+          "descriptions": ["AI CRM for 5-50 person teams."],
+          "value_props": ["Automated follow-ups", "Embedded copilots"],
+          "resource_urls": ["https://nimbus.example/signup"],
+          "image_urls": ["https://cdn.example.com/nimbus/crm.png"]
+        }
       },
-      "ts": "2025-11-11T18:00:01Z",
+      "timestamp": "2025-11-11T18:00:01Z",
       "auth": {
-        "nonce": "n_456",
-        "sig": "sig_789"
+        "nonce": "nonce_456",
+        "signature": "sig_789"
       }
     }
   ],

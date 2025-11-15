@@ -136,23 +136,24 @@ class BidResponseService:
         if not isinstance(bid_payload, dict):
             raise ValueError("bid payload is required")
         bidder_name = (
-            bid_payload.get("agent_id")
+            bid_payload.get("brand_agent_id")
+            or payload.get("brand_agent_id")
             or bid_payload.get("bidder")
             or payload.get("bidder")
         )
         if not bidder_name:
-            raise ValueError("agent_id is required")
+            raise ValueError("brand_agent_id is required")
         bidder = self.registry.get(bidder_name)
         if not bidder:
             raise ValueError("unknown bidder")
-        timestamp = payload.get("timestamp") or bid_payload.get("ts")
+        timestamp = payload.get("timestamp") or bid_payload.get("timestamp")
         if not timestamp:
             raise ValueError("timestamp is required")
         auth = bid_payload.get("auth") or {}
         nonce = auth.get("nonce") or payload.get("nonce")
         if not nonce:
             raise ValueError("nonce is required")
-        signature = payload.get("signature") or auth.get("sig") or ""
+        signature = payload.get("signature") or auth.get("signature") or ""
         await self.nonce_cache.assert_fresh(f"{serve_token}:{nonce}:{bidder_name}")
         assert_within_skew(timestamp, max_skew_ms=self.max_skew_ms)
         try:
@@ -173,22 +174,16 @@ class BidResponseService:
             raise ValueError(str(exc)) from exc
 
     def _derive_price(self, bid_payload: dict[str, Any]) -> float:
-        vector = bid_payload.get("bid_vector") or {}
-        preferred = (bid_payload.get("preferred_unit") or "").lower()
-        candidates = []
-        if preferred:
-            key = preferred.lower()
-            key = key if key.startswith("cp") else f"cp{key}"
-            candidates.append(vector.get(key))
-            candidates.append(vector.get(key.upper()))
-        candidates.extend(
-            [
-                vector.get("cpa") or vector.get("CPA"),
-                vector.get("cpc") or vector.get("CPC"),
-                vector.get("cpx") or vector.get("CPX"),
-                bid_payload.get("price"),
-            ]
-        )
+        pricing = bid_payload.get("pricing") or {}
+        candidates = [
+            pricing.get("cpa"),
+            pricing.get("CPA"),
+            pricing.get("cpc"),
+            pricing.get("CPC"),
+            pricing.get("cpx"),
+            pricing.get("CPX"),
+            bid_payload.get("price"),
+        ]
         for candidate in candidates:
             if candidate is None:
                 continue
@@ -196,4 +191,4 @@ class BidResponseService:
                 return float(candidate)
             except (TypeError, ValueError):
                 continue
-        raise ValueError("bid_vector missing valid pricing")
+        raise ValueError("pricing missing valid entries")

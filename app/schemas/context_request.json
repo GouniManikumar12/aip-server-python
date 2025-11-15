@@ -1,153 +1,156 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ContextRequest",
-  "description": "AI platform request that starts an auction. Sent by platforms to initiate ad serving.",
+  "description": "Normalized request sent from an AIP operator to Brand Agents to request bids.",
   "type": "object",
   "required": [
-    "request_id",
+    "context_id",
     "session_id",
+    "operator_id",
     "platform_id",
     "query_text",
     "locale",
     "geo",
-    "ts",
+    "timestamp",
+    "intent",
+    "allowed_formats",
     "auth"
   ],
   "properties": {
-    "request_id": {
+    "context_id": {
       "type": "string",
-      "description": "Unique identifier for this context request",
-      "example": "rq_92f"
+      "description": "Unique ID for this auction request",
+      "example": "ctx_92fA1"
     },
     "session_id": {
       "type": "string",
-      "description": "Session identifier for grouping related requests",
-      "example": "s_001"
+      "description": "Conversation/session identifier",
+      "example": "sess_001"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "Identifier of the operator sending this request",
+      "example": "admesh_operator"
     },
     "platform_id": {
       "type": "string",
-      "description": "Identifier of the AI platform making the request",
-      "example": "pf_chatapp"
+      "description": "Identifier of the source AI platform",
+      "example": "openai_chat"
     },
     "query_text": {
       "type": "string",
-      "description": "User's query or prompt text",
+      "description": "User's normalized query text",
       "example": "best CRM for small teams"
-    },
-    "surface": {
-      "type": "string",
-      "description": "UI surface where the ad will be displayed",
-      "enum": [
-        "chat",
-        "voice",
-        "page",
-        "result_card"
-      ],
-      "example": "chat"
     },
     "locale": {
       "type": "string",
-      "description": "User's locale in BCP 47 format",
       "pattern": "^[a-z]{2}-[A-Z]{2}$",
+      "description": "User locale in BCP 47 format",
       "example": "en-US"
     },
     "geo": {
       "type": "string",
-      "description": "User's country code (ISO 3166-1 alpha-2)",
       "pattern": "^[A-Z]{2}$",
+      "description": "User country code",
       "example": "US"
     },
-    "pricing": {
-      "type": "object",
-      "description": "Platform pricing constraints",
-      "properties": {
-        "cpx_floor": {
-          "type": "string",
-          "description": "Minimum CPX bid price in USD",
-          "pattern": "^\\d+\\.\\d{2,}$",
-          "example": "0.03"
-        }
-      }
+    "verticals": {
+      "type": "array",
+      "description": "Normalized topical verticals identified by the operator",
+      "items": { "type": "string" },
+      "example": ["crm", "smb_software"]
     },
-    "features": {
+    "intent": {
       "type": "object",
-      "description": "Contextual features for targeting",
+      "description": "Operator-generated semantic understanding of the user's intent",
+      "required": ["type"],
       "properties": {
-        "topic": {
-          "type": "array",
-          "description": "Detected topics or categories",
-          "items": {
-            "type": "string"
-          },
-          "example": [
-            "crm",
-            "smb"
-          ]
+        "type": {
+          "type": "string",
+          "enum": ["informational", "commercial", "transactional"],
+          "description": "High-level intent classification",
+          "example": "commercial"
         },
-        "user_type": {
+        "decision_phase": {
           "type": "string",
-          "description": "Type of user making the query",
-          "enum": [
-            "human",
-            "agent"
-          ],
-          "example": "human"
+          "enum": ["research", "compare", "decide", "act"],
+          "description": "Commercial funnel decision phase",
+          "example": "compare"
+        },
+        "context_summary": {
+          "type": "string",
+          "description": "Short operator-generated summary of the relevant conversation context",
+          "example": "User is evaluating CRM tools and narrowing down options."
+        },
+        "turn_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many turns into the session the user is",
+          "example": 3
         }
       }
     },
-    "ts": {
+    "allowed_formats": {
+      "type": "array",
+      "description": "Creative formats allowed by the operator for rendering",
+      "items": {
+        "type": "string",
+        "enum": ["weave", "citation", "product_card"]
+      },
+      "example": ["weave", "citation", "product_card"]
+    },
+    "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of the request",
-      "example": "2025-11-11T18:00:00Z"
+      "description": "Timestamp when the operator created this request",
+      "example": "2025-11-14T18:22:00Z"
     },
     "auth": {
       "type": "object",
-      "description": "Authentication credentials",
-      "required": [
-        "nonce",
-        "sig"
-      ],
+      "required": ["nonce", "sig"],
       "properties": {
         "nonce": {
           "type": "string",
           "description": "One-time nonce for replay protection",
-          "example": "n_123"
+          "example": "nonce_123"
         },
         "sig": {
           "type": "string",
-          "description": "HMAC signature of the request",
-          "example": "sig_abcd"
+          "description": "HMAC signature validating this request",
+          "example": "sig_hmac_123abc"
         }
+      },
+      "example": {
+        "nonce": "nonce_123",
+        "sig": "sig_hmac_123abc"
       }
     },
-    "ext": {
-      "$ref": "./common.json#/definitions/extensionNamespace"
+    "extensions": {
+      "$ref": "./common.json#/definitions/extensionNamespace",
+      "description": "Optional operator-defined fields or experimental values. Must be namespaced."
     }
   },
   "examples": [
     {
-      "request_id": "rq_92f",
-      "session_id": "s_001",
-      "platform_id": "pf_chatapp",
+      "context_id": "ctx_92fA1",
+      "session_id": "sess_001",
+      "operator_id": "admesh_operator",
+      "platform_id": "openai_chat",
       "query_text": "best CRM for small teams",
-      "surface": "chat",
       "locale": "en-US",
       "geo": "US",
-      "pricing": {
-        "cpx_floor": "0.03"
+      "verticals": ["crm", "smb_software"],
+      "intent": {
+        "type": "commercial",
+        "decision_phase": "compare",
+        "context_summary": "User is evaluating CRM tools and narrowing down options.",
+        "turn_index": 3
       },
-      "features": {
-        "topic": [
-          "crm",
-          "smb"
-        ],
-        "user_type": "human"
-      },
-      "ts": "2025-11-11T18:00:00Z",
-      "auth": {
-        "nonce": "n_123",
-        "sig": "sig_abcd"
+      "allowed_formats": ["weave", "citation", "product_card"],
+      "timestamp": "2025-11-14T18:22:00Z",
+      "auth": { "nonce": "nonce_123", "sig": "sig_hmac_123abc" },
+      "extensions": {
+        "admesh": { "operator_relevance_score": 0.87 }
       }
     }
   ],

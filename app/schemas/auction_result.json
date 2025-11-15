@@ -27,29 +27,59 @@
     "winner": {
       "type": "object",
       "description": "Information about the winning bid",
+      "required": ["brand_agent_id", "cpx_price", "billable_unit"],
       "properties": {
-        "agent_id": {
+        "brand_agent_id": {
           "type": "string",
-          "description": "ID of the winning advertiser agent",
-          "example": "ag_123"
+          "description": "ID of the winning Brand Agent",
+          "example": "brand_agent_123"
         },
-        "clearing_price_cpx": {
+        "campaign_id": {
           "type": "string",
-          "description": "Clearing price for CPX in USD",
-          "pattern": "^\\d+\\.\\d{2,}$",
-          "example": "0.042"
+          "description": "Operator-defined campaign tracking ID",
+          "example": "cmp_nimbus_launch"
         },
-        "preferred_unit": {
+        "product_id": {
           "type": "string",
-          "description": "Charging model for this serve",
-          "enum": [
-            "CPX",
-            "CPC",
-            "CPA"
-          ],
+          "description": "Product or recommendation identifier",
+          "example": "prod_nimbus_crm"
+        },
+        "cpx_price": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Final CPX cost in cents (bid = pay).",
+          "example": "5"
+        },
+        "cpc_price": {
+          "description": "Clearing CPC cost in cents (if a click occurs).",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "example": "145"
+            },
+            { "type": "null" }
+          ]
+        },
+        "cpa_price": {
+          "description": "Clearing CPA cost in cents (if a conversion occurs).",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "example": "1200"
+            },
+            { "type": "null" }
+          ]
+        },
+        "billable_unit": {
+          "type": "string",
+          "description": "Highest-value billing unit that ultimately settles for this serve.",
+          "enum": ["CPX", "CPC", "CPA"],
           "example": "CPA"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "render": {
       "type": "object",
@@ -80,6 +110,12 @@
           "description": "Click-through URL with tracking",
           "format": "uri",
           "example": "https://admesh.click/stk_abcxyz123"
+        },
+        "image": {
+          "type": "string",
+          "description": "Primary creative image URL",
+          "format": "uri",
+          "example": "https://cdn.example.com/creative.png"
         }
       }
     },
@@ -113,16 +149,21 @@
       "auction_id": "auc_981",
       "serve_token": "stk_abcxyz123",
       "winner": {
-        "agent_id": "ag_123",
-        "clearing_price_cpx": "0.042",
-        "preferred_unit": "CPA"
+        "brand_agent_id": "brand_agent_123",
+        "campaign_id": "cmp_nimbus_launch",
+        "product_id": "prod_nimbus_crm",
+        "cpx_price": "5",
+        "cpc_price": "145",
+        "cpa_price": null,
+        "billable_unit": "CPC"
       },
       "render": {
         "label": "[Ad]",
-        "title": "Pipedrive CRM",
-        "body": "Built for founders.",
+        "title": "Nimbus CRM Pro",
+        "body": "AI-native CRM for 5-50 person teams.",
         "cta": "Try for free",
-        "url": "https://admesh.click/stk_abcxyz123"
+        "url": "https://admesh.click/stk_abcxyz123",
+        "image": "https://cdn.example.com/nimbus/crm.png"
       },
       "ttl_ms": 60000
     },
