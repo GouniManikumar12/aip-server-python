@@ -25,6 +25,7 @@ from .storage import LedgerStorage, build_storage
 from .transport.nonces import NonceCache
 from .validation.validator import SchemaRegistry, get_schema_registry
 from .auction.fanout import BidFanout
+from .weave import WeaveService
 
 
 @asynccontextmanager
@@ -60,6 +61,10 @@ async def lifespan(app: FastAPI):
         nonce_cache,
         server_config.transport.max_clock_skew_ms,
     )
+    weave_service = WeaveService(
+        storage=storage,
+        auction_runner=auction_runner,
+    )
 
     app.state.server_config = server_config
     app.state.schema_registry = schema_registry
@@ -72,6 +77,7 @@ async def lifespan(app: FastAPI):
     app.state.event_service = event_service
     app.state.bid_inbox = bid_inbox
     app.state.bid_response_service = bid_response_service
+    app.state.weave_service = weave_service
     app.state.start_time = datetime.now(timezone.utc)
 
     yield
@@ -123,6 +129,10 @@ def get_nonce_cache(request: Request) -> NonceCache:
 
 def get_bid_response_service(request: Request) -> BidResponseService:
     return request.app.state.bid_response_service
+
+
+def get_weave_service(request: Request) -> WeaveService:
+    return request.app.state.weave_service
 
 
 # Routes ---------------------------------------------------------------------
@@ -197,6 +207,64 @@ async def submit_bid_response(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"status": "accepted"}
+
+
+@app.post("/v1/weave/recommendations", tags=["weave"])
+async def get_weave_recommendations(
+    payload: dict[str, Any] = Body(...),
+    weave_service: WeaveService = Depends(get_weave_service),
+) -> dict[str, Any]:
+    """
+    Coordination bridge for Weave Ad Format integration.
+
+    Implements cache-first, non-blocking pattern:
+    - Path 1 (Completed): Returns cached Weave payload immediately
+    - Path 2 (In Progress): Returns retry hint while auction runs
+    - Path 3 (New): Creates record, triggers background auction, returns retry hint
+
+    Request body:
+        {
+            "message_id": "msg_123",  # Required
+            "session_id": "sess_456", # Required
+            "query": "best laptops"   # Optional
+        }
+
+    Response scenarios:
+        1. Completed: {"status": "completed", "weave_content": "...", "serve_token": "...", ...}
+        2. In Progress: {"status": "in_progress", "retry_after_ms": 150, "message": "..."}
+        3. Failed: {"status": "failed", "error": "..."}
+    """
+    # Validate required fields
+    message_id = payload.get("message_id")
+    session_id = payload.get("session_id")
+
+    if not message_id:
+        raise HTTPException(status_code=400, detail="message_id is required")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+
+    query = payload.get("query")
+
+    try:
+        # Three-path logic handled by WeaveService:
+        # 1. Check cache for completed recommendation
+        # 2. Return in_progress if auction running
+        # 3. Create new record and trigger background auction
+        result = await weave_service.get_or_create_recommendation(
+            session_id=session_id,
+            message_id=message_id,
+            query=query,
+        )
+        return result
+    except Exception as exc:
+        # Log error and return 500
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in weave recommendations endpoint: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(exc)}"
+        ) from exc
 
 
 @app.post("/aip/events", tags=["events"], status_code=status.HTTP_202_ACCEPTED)

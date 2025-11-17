@@ -23,6 +23,26 @@ class LedgerStorage(Protocol):
     async def list_records(self) -> list[dict]: ...
 
 
+class RecommendationStorage(Protocol):
+    """Storage protocol for Weave recommendations."""
+
+    async def get_recommendation(
+        self, session_id: str, message_id: str
+    ) -> dict | None:
+        """Get recommendation by session_id and message_id. Returns None if not found."""
+        ...
+
+    async def create_recommendation(self, recommendation: dict) -> dict:
+        """Create a new recommendation record."""
+        ...
+
+    async def update_recommendation(
+        self, session_id: str, message_id: str, updates: dict
+    ) -> dict:
+        """Update an existing recommendation record."""
+        ...
+
+
 def build_storage(config: ServerConfig) -> LedgerStorage:
     backend = config.ledger.backend
     options = dict(config.ledger.options)

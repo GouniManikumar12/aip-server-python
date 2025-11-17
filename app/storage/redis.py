@@ -18,6 +18,9 @@ class RedisStorage:
     def _record_key(self, record_id: str) -> str:
         return f"{self._prefix}:record:{record_id}"
 
+    def _recommendation_key(self, session_id: str, message_id: str) -> str:
+        return f"{self._prefix}:recommendation:{session_id}:{message_id}"
+
     async def create_record(self, record: dict[str, Any]) -> dict[str, Any]:
         key = self._record_key(record["record_id"])
         await self._redis.set(key, orjson.dumps(record))
@@ -54,3 +57,35 @@ class RedisStorage:
             return []
         values = await self._redis.mget(keys)
         return [orjson.loads(value) for value in values if value]
+
+    # Recommendation storage methods
+
+    async def get_recommendation(
+        self, session_id: str, message_id: str
+    ) -> dict[str, Any] | None:
+        """Get recommendation by session_id and message_id."""
+        key = self._recommendation_key(session_id, message_id)
+        raw = await self._redis.get(key)
+        if raw is None:
+            return None
+        return orjson.loads(raw)
+
+    async def create_recommendation(self, recommendation: dict[str, Any]) -> dict[str, Any]:
+        """Create a new recommendation record."""
+        key = self._recommendation_key(
+            recommendation["session_id"], recommendation["message_id"]
+        )
+        await self._redis.set(key, orjson.dumps(recommendation))
+        return recommendation
+
+    async def update_recommendation(
+        self, session_id: str, message_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update an existing recommendation record."""
+        recommendation = await self.get_recommendation(session_id, message_id)
+        if recommendation is None:
+            raise KeyError(f"recommendation ({session_id}, {message_id}) not found")
+        recommendation.update(updates)
+        key = self._recommendation_key(session_id, message_id)
+        await self._redis.set(key, orjson.dumps(recommendation))
+        return recommendation
