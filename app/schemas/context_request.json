@@ -37,10 +37,37 @@
       "description": "Identifier of the source AI platform",
       "example": "openai_chat"
     },
+    "platform_surface": {
+      "type": "string",
+      "description": "Platform surface type: chat, voice, browser, extension, ui panel, etc.",
+      "example": "ai_chat"
+    },
+    "model": {
+      "type": "string",
+      "description": "AI model provided by platform",
+      "example": "gpt-4.3-mini"
+    },
     "query_text": {
       "type": "string",
       "description": "User's normalized query text",
       "example": "best CRM for small teams"
+    },
+    "messages": {
+      "type": "array",
+      "description": "Conversation history",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant", "system"]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
     },
     "locale": {
       "type": "string",
@@ -102,8 +129,29 @@
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp when the operator created this request",
+      "description": "Original event timestamp",
       "example": "2025-11-14T18:22:00Z"
+    },
+    "latency_budget_ms": {
+      "type": "integer",
+      "description": "How long the platform will wait for an ad response (milliseconds)",
+      "example": 500
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Anonymous hashed user ID for pacing & personalization",
+      "example": "user_hash_abc123"
+    },
+    "conversation_id": {
+      "type": "string",
+      "description": "Conversation session from platform",
+      "example": "conv_abc123"
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Device type: mobile, desktop, tablet",
+      "enum": ["mobile", "desktop", "tablet"],
+      "example": "desktop"
     },
     "auth": {
       "type": "object",
@@ -127,7 +175,7 @@
     },
     "metadata": {
       "$ref": "./common.json#/definitions/extensionNamespace",
-      "description": "Optional operator-defined fields or experimental values. Must be namespaced."
+      "description": "Unified metadata containing platform and operator data: { platform: {...}, admesh: {...} }"
     }
   },
   "examples": [
@@ -136,7 +184,10 @@
       "session_id": "sess_001",
       "operator_id": "admesh_operator",
       "platform_id": "openai_chat",
+      "platform_surface": "ai_chat",
+      "model": "gpt-4.3-mini",
       "query_text": "best CRM for small teams",
+      "messages": [],
       "locale": "en-US",
       "geo": "US",
       "verticals": ["crm", "smb_software"],
@@ -148,6 +199,10 @@
       },
       "allowed_formats": ["weave", "citation", "product_card"],
       "timestamp": "2025-11-14T18:22:00Z",
+      "latency_budget_ms": 500,
+      "user_id": "user_hash_abc123",
+      "conversation_id": "conv_xyz789",
+      "device_type": "desktop",
       "auth": { "nonce": "nonce_123", "sig": "sig_hmac_123abc" },
       "metadata": {
         "admesh": { "operator_relevance_score": 0.87 }
