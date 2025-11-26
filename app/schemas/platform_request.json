@@ -83,11 +83,32 @@
       "description": "Minimum CPX (USD) required by the platform for this auction request.",
       "example": 0.05
     },
+    "device_type": {
+      "type": "string",
+      "description": "Device type: mobile, desktop, tablet",
+      "enum": ["mobile", "desktop", "tablet"],
+      "example": "desktop"
+    },
+    "conversation_id": {
+      "type": "string",
+      "description": "Conversation ID if independent from session_id",
+      "example": "conv_abc123"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Anonymous hashed user ID for pacing & personalization",
+      "example": "user_hash_xyz789"
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp when the platform generated this request",
+      "description": "ISO timestamp of the event",
       "example": "2025-11-14T18:22:00Z"
+    },
+    "latency_budget_ms": {
+      "type": "integer",
+      "description": "Optional latency budget from platform in milliseconds",
+      "example": 500
     },
     "auth": {
       "type": "object",
@@ -111,7 +132,7 @@
     },
     "metadata": {
       "$ref": "./common.json#/definitions/extensionNamespace",
-      "description": "Optional platform-defined or experimental fields. Must be vendor-namespaced."
+      "description": "Platform extensions, modes, structured session metadata. Must be vendor-namespaced."
     }
   },
   "examples": [
@@ -129,7 +150,10 @@
       "geo": "US",
       "platform_surface": "ai_chat",
       "cpx_floor": 0.05,
+      "device_type": "desktop",
+      "user_id": "user_hash_abc123",
       "timestamp": "2025-11-14T18:22:00Z",
+      "latency_budget_ms": 500,
       "auth": { "nonce": "nonce_12345", "sig": "sig_d41d8cd98f00b204e9800998ecf8427e" },
       "metadata": {
         "openai": { "model": "gpt-4.3-mini", "conversation_mode": "assistant" }
