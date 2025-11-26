@@ -125,7 +125,7 @@
         "sig": "sig_hmac_123abc"
       }
     },
-    "extensions": {
+    "metadata": {
       "$ref": "./common.json#/definitions/extensionNamespace",
       "description": "Optional operator-defined fields or experimental values. Must be namespaced."
     }
@@ -149,7 +149,7 @@
       "allowed_formats": ["weave", "citation", "product_card"],
       "timestamp": "2025-11-14T18:22:00Z",
       "auth": { "nonce": "nonce_123", "sig": "sig_hmac_123abc" },
-      "extensions": {
+      "metadata": {
         "admesh": { "operator_relevance_score": 0.87 }
       }
     }

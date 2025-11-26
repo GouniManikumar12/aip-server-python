@@ -156,9 +156,9 @@
       },
       "additionalProperties": false
     },
-    "extensions": {
+    "metadata": {
       "$ref": "./common.json#/definitions/extensionNamespace",
-      "description": "Optional vendor-namespaced extension data"
+      "description": "Optional vendor-namespaced metadata"
     }
   },
   "examples": [

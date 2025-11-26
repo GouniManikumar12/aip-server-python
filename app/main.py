@@ -406,9 +406,9 @@ def build_context_request(platform_request: dict[str, Any], settings: ServerConf
     verticals = extract_verticals(platform_request)
     if verticals:
         context_request["verticals"] = verticals
-    extensions = normalize_extensions(platform_request)
-    if extensions:
-        context_request["extensions"] = extensions
+    metadata = normalize_extensions(platform_request)
+    if metadata:
+        context_request["metadata"] = metadata
     return context_request
 
 
@@ -457,9 +457,9 @@ def summarize_context(platform_request: dict[str, Any]) -> str:
 
 
 def normalize_extensions(platform_request: dict[str, Any]) -> dict[str, Any]:
-    """Preserve vendor-namespaced extensions and attach platform metadata for downstream bidders."""
+    """Preserve vendor-namespaced metadata and attach platform metadata for downstream bidders."""
     metadata = platform_request.get("metadata")
-    extensions = deepcopy(metadata) if isinstance(metadata, dict) else {}
+    result = deepcopy(metadata) if isinstance(metadata, dict) else {}
     vendor_id = slug_vendor_id(platform_request.get("platform_id", "platform"))
     platform_metadata: dict[str, Any] = {}
     for key in ("model", "messages", "platform_surface"):
@@ -469,13 +469,13 @@ def normalize_extensions(platform_request: dict[str, Any]) -> dict[str, Any]:
     if platform_request.get("cpx_floor") is not None:
         platform_metadata["cpx_floor"] = platform_request.get("cpx_floor")
     if platform_metadata:
-        bucket = extensions.get(vendor_id)
+        bucket = result.get(vendor_id)
         if not isinstance(bucket, dict):
             bucket = {}
-            extensions[vendor_id] = bucket
+            result[vendor_id] = bucket
         existing_meta = bucket.get("platform_request") if isinstance(bucket.get("platform_request"), dict) else {}
         bucket["platform_request"] = {**existing_meta, **platform_metadata}
-    return extensions
+    return result
 
 
 def slug_vendor_id(platform_id: str) -> str:
