@@ -458,8 +458,8 @@ def summarize_context(platform_request: dict[str, Any]) -> str:
 
 def normalize_extensions(platform_request: dict[str, Any]) -> dict[str, Any]:
     """Preserve vendor-namespaced extensions and attach platform metadata for downstream bidders."""
-    ext = platform_request.get("ext")
-    extensions = deepcopy(ext) if isinstance(ext, dict) else {}
+    metadata = platform_request.get("metadata")
+    extensions = deepcopy(metadata) if isinstance(metadata, dict) else {}
     vendor_id = slug_vendor_id(platform_request.get("platform_id", "platform"))
     platform_metadata: dict[str, Any] = {}
     for key in ("model", "messages", "platform_surface"):
